@@ -269,7 +269,367 @@
   </footer>
 
   <script>
-    // Data parser goes here.
+    (() => {
+  'use strict';
+
+  /* ---------- Config ---------- */
+  const MAX_BYTES = 25 * 1024 * 1024;
+  const REQUIRED_COLUMNS = ['Handle', 'Title', 'Body (HTML)', 'Variant Price', 'Variant SKU', 'Variant Inventory Qty'];
+  const money = new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' });
+
+  /* ---------- DOM ---------- */
+  const $ = (id) => document.getElementById(id);
+  const dropZone = $('dropZone');
+  const fileInput = $('fileInput');
+  const fileName = $('fileName');
+  const marketplace = $('marketplace');
+  const convertBtn = $('convertBtn');
+  const statusMsg = $('statusMsg');
+  const statSkus = $('statSkus');
+  const statValue = $('statValue');
+  const statAvg = $('statAvg');
+  const previewBody = $('previewBody');
+
+  // The dropdown in the static UI has no TikTok Shop option, so add it once.
+  if (!marketplace.querySelector('option[value="tiktok"]')) {
+    const opt = document.createElement('option');
+    opt.value = 'tiktok';
+    opt.textContent = 'TikTok Shop';
+    marketplace.insertBefore(opt, marketplace.querySelector('option[value="ebay"]') || null);
+  }
+
+  /* ---------- State ---------- */
+  const state = { variants: [], preview: [], sourceName: '' };
+
+  /* ---------- CSV parsing (RFC 4180 style state machine) ---------- */
+  function parseCSV(text) {
+    if (text.charCodeAt(0) === 0xfeff) text = text.slice(1); // strip BOM
+    const rows = [];
+    let row = [];
+    let field = '';
+    let inQuotes = false;
+
+    const endRow = () => {
+      row.push(field);
+      field = '';
+      // skip fully blank lines
+      if (!(row.length === 1 && row[0] === '')) rows.push(row);
+      row = [];
+    };
+
+    for (let i = 0; i < text.length; i++) {
+      const c = text[i];
+      if (inQuotes) {
+        if (c === '"') {
+          if (text[i + 1] === '"') { field += '"'; i++; } // escaped quote
+          else inQuotes = false;
+        } else {
+          field += c; // commas and line breaks are literal inside quotes
+        }
+      } else if (c === '"' && field === '') {
+        inQuotes = true;
+      } else if (c === ',') {
+        row.push(field);
+        field = '';
+      } else if (c === '\r') {
+        if (text[i + 1] === '\n') i++;
+        endRow();
+      } else if (c === '\n') {
+        endRow();
+      } else {
+        field += c;
+      }
+    }
+    if (inQuotes) throw new Error('The CSV has an unclosed quote. Check the file for a broken cell and try again.');
+    if (field !== '' || row.length) endRow();
+    return rows;
+  }
+
+  /* ---------- Helpers ---------- */
+  function parseNumber(raw) {
+    if (raw == null) return NaN;
+    const cleaned = String(raw).replace(/[^0-9.\-]/g, '');
+    if (cleaned === '' || cleaned === '-' || cleaned === '.') return NaN;
+    return parseFloat(cleaned);
+  }
+
+  function stripHtml(html) {
+    if (!html) return '';
+    const spaced = html.replace(/<\s*(br|\/p|\/div|\/li|\/h[1-6]|\/tr)\b[^>]*>/gi, ' ');
+    // DOMParser builds an inert document: scripts do not run and images do not load.
+    const doc = new DOMParser().parseFromString(spaced, 'text/html');
+    return (doc.body.textContent || '').replace(/\s+/g, ' ').trim();
+  }
+
+  function truncate(str, max) {
+    const chars = Array.from(str); // counts code points, not UTF-16 units
+    return chars.length > max ? chars.slice(0, max).join('').trim() : str;
+  }
+
+  // Prefix cells that spreadsheet apps could read as formulas.
+  const safeText = (s) => (/^[=+@\t\r]/.test(s) ? "'" + s : s);
+
+  const toQty = (q) => (Number.isFinite(q) ? Math.max(0, Math.trunc(q)) : 0);
+  const toPrice = (p) => (Number.isFinite(p) ? p.toFixed(2) : '');
+
+  function csvCell(value) {
+    const s = value == null ? '' : String(value);
+    return /[",\r\n]/.test(s) ? '"' + s.replace(/"/g, '""') + '"' : s;
+  }
+
+  function toCSV(headers, rows) {
+    return [headers, ...rows].map((r) => r.map(csvCell).join(',')).join('\r\n');
+  }
+
+  /* ---------- Shopify rows -> variant array ---------- */
+  function extractVariants(rows) {
+    if (rows.length < 2) throw new Error('The file has no product rows.');
+    const header = rows[0].map((h) => h.trim().toLowerCase());
+    const idx = {};
+    const missing = [];
+    REQUIRED_COLUMNS.forEach((name) => {
+      const i = header.indexOf(name.toLowerCase());
+      if (i === -1) missing.push(name); else idx[name] = i;
+    });
+    if (missing.length) {
+      throw new Error('This does not look like a Shopify product export. Missing columns: ' + missing.join(', ') + '.');
+    }
+
+    const products = new Map(); // Shopify only fills Title/Body on a product's first row
+    const variants = [];
+
+    for (let r = 1; r < rows.length; r++) {
+      const row = rows[r];
+      const get = (name) => (row[idx[name]] || '').trim();
+      const handle = get('Handle');
+      const title = get('Title');
+      const body = row[idx['Body (HTML)']] || '';
+
+      let product = products.get(handle);
+      if (!product) { product = { title: '', body: '' }; products.set(handle, product); }
+      if (title) product.title = title;
+      if (body.trim()) product.body = body;
+
+      const sku = get('Variant SKU');
+      const priceRaw = get('Variant Price');
+      if (!sku && priceRaw === '') continue; // image-only or option-only row, not a variant
+
+      variants.push({
+        handle,
+        product,
+        sku,
+        price: parseNumber(priceRaw),
+        qty: parseNumber(get('Variant Inventory Qty')),
+      });
+    }
+    return variants;
+  }
+
+  /* ---------- Metrics & preview ---------- */
+  function computeMetrics(variants) {
+    let value = 0;
+    let priceSum = 0;
+    let priceCount = 0;
+    for (const v of variants) {
+      if (!Number.isFinite(v.price)) continue;
+      priceSum += v.price;
+      priceCount++;
+      value += v.price * (Number.isFinite(v.qty) ? Math.max(0, v.qty) : 0);
+    }
+    return { totalSkus: variants.length, totalValue: value, avgPrice: priceCount ? priceSum / priceCount : 0 };
+  }
+
+  function renderMetrics(m) {
+    statSkus.textContent = m.totalSkus.toLocaleString('en-US');
+    statValue.textContent = money.format(m.totalValue);
+    statAvg.textContent = money.format(m.avgPrice);
+  }
+
+  function buildPreview(variants) {
+    return variants.slice(0, 3).map((v) => ({
+      sku: v.sku || '\u2014',
+      title: v.product.title || '\u2014',
+      price: Number.isFinite(v.price) ? money.format(v.price) : '\u2014',
+      qty: Number.isFinite(v.qty) ? String(Math.trunc(v.qty)) : '\u2014',
+    }));
+  }
+
+  function renderPreview(preview) {
+    previewBody.replaceChildren();
+    const filled = preview.length > 0;
+    previewBody.classList.toggle('text-slate-400', !filled);
+    previewBody.classList.toggle('text-ink', filled);
+    for (let i = 0; i < 3; i++) {
+      const p = preview[i];
+      const tr = document.createElement('tr');
+      const cells = p ? [p.sku, p.title, p.price, p.qty] : ['\u2014', '\u2014', '\u2014', '\u2014'];
+      cells.forEach((text) => {
+        const td = document.createElement('td');
+        td.className = 'px-4 py-3';
+        td.textContent = text; // textContent keeps uploaded data from being parsed as HTML
+        tr.appendChild(td);
+      });
+      previewBody.appendChild(tr);
+    }
+  }
+
+  /* ---------- Transformation ---------- */
+  const FORMATS = {
+    tiktok: {
+      label: 'TikTok Shop',
+      headers: ['Title', 'SKU', 'Price', 'Quantity', 'Description'],
+      map: (v) => [
+        safeText(v.product.title),
+        safeText(v.sku),
+        toPrice(v.price),
+        toQty(v.qty),
+        safeText(stripHtml(v.product.body)),
+      ],
+    },
+    ebay: {
+      label: 'eBay',
+      headers: ['Title', 'Custom Label (SKU)', 'Start Price', 'Quantity'],
+      map: (v) => [
+        safeText(truncate(v.product.title, 80)),
+        safeText(v.sku),
+        toPrice(v.price),
+        toQty(v.qty),
+      ],
+    },
+  };
+
+  /** Converts the extracted Shopify variant array into a CSV string for the chosen format. */
+  function transformShopifyData(variants, formatKey) {
+    const fmt = FORMATS[formatKey];
+    if (!fmt) throw new Error('That marketplace is not supported yet.');
+    return toCSV(fmt.headers, variants.map(fmt.map));
+  }
+
+  /* ---------- Download ---------- */
+  function downloadCSV(csv, filename) {
+    const blob = new Blob(['\ufeff' + csv], { type: 'text/csv;charset=utf-8' }); // BOM keeps Excel happy with UTF-8
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = filename;
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+    setTimeout(() => URL.revokeObjectURL(url), 1000);
+  }
+
+  /* ---------- UI plumbing ---------- */
+  function setStatus(message, tone = 'info') {
+    statusMsg.textContent = message;
+    statusMsg.className =
+      'text-sm ' + (tone === 'error' ? 'text-red-600' : tone === 'success' ? 'text-teal-700' : 'text-slate-500');
+  }
+
+  function updateConvertButton() {
+    convertBtn.disabled = !(state.variants.length && FORMATS[marketplace.value]);
+  }
+
+  function resetResults() {
+    state.variants = [];
+    state.preview = [];
+    renderMetrics({ totalSkus: 0, totalValue: 0, avgPrice: 0 });
+    renderPreview([]);
+    fileName.classList.add('hidden');
+    updateConvertButton();
+  }
+
+  function isCsv(file) {
+    return /\.csv$/i.test(file.name) || /csv/i.test(file.type);
+  }
+
+  async function handleFile(file) {
+    if (!file) return;
+    resetResults();
+    if (!isCsv(file)) return setStatus('Please upload a .csv file exported from Shopify.', 'error');
+    if (file.size > MAX_BYTES) return setStatus('That file is over 25 MB. Split it into smaller exports and try again.', 'error');
+
+    try {
+      setStatus('Reading file\u2026');
+      const rows = parseCSV(await file.text());
+      const variants = extractVariants(rows);
+      if (!variants.length) throw new Error('No variants with a SKU or price were found in this file.');
+
+      state.variants = variants;
+      state.sourceName = file.name;
+      state.preview = buildPreview(variants);
+
+      renderMetrics(computeMetrics(variants));
+      renderPreview(state.preview);
+      fileName.textContent = file.name;
+      fileName.classList.remove('hidden');
+      updateConvertButton();
+
+      setStatus(
+        FORMATS[marketplace.value]
+          ? 'Ready. Click Convert and download.'
+          : 'File loaded. Now choose TikTok Shop or eBay as the target.',
+        'success'
+      );
+    } catch (err) {
+      resetResults();
+      setStatus(err.message || 'Something went wrong while reading the file.', 'error');
+    }
+  }
+
+  /* ---------- Events ---------- */
+  fileInput.addEventListener('change', () => {
+    handleFile(fileInput.files[0]);
+    fileInput.value = ''; // lets the same file be chosen again
+  });
+
+  dropZone.setAttribute('tabindex', '0');
+  dropZone.setAttribute('role', 'button');
+  dropZone.setAttribute('aria-label', 'Upload a Shopify CSV file');
+  dropZone.addEventListener('click', (e) => { if (e.target !== fileInput) fileInput.click(); });
+  dropZone.addEventListener('keydown', (e) => {
+    if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); fileInput.click(); }
+  });
+
+  ['dragenter', 'dragover'].forEach((evt) =>
+    dropZone.addEventListener(evt, (e) => { e.preventDefault(); dropZone.classList.add('dz-active'); })
+  );
+  dropZone.addEventListener('dragleave', (e) => {
+    if (!dropZone.contains(e.relatedTarget)) dropZone.classList.remove('dz-active');
+  });
+  dropZone.addEventListener('drop', (e) => {
+    e.preventDefault();
+    dropZone.classList.remove('dz-active');
+    handleFile(e.dataTransfer.files[0]);
+  });
+
+  // Stop the browser from opening a file that is dropped outside the zone.
+  ['dragover', 'drop'].forEach((evt) => window.addEventListener(evt, (e) => e.preventDefault()));
+
+  marketplace.addEventListener('change', () => {
+    updateConvertButton();
+    if (!FORMATS[marketplace.value]) {
+      setStatus('That marketplace is not supported yet. Choose TikTok Shop or eBay.', 'error');
+    } else if (state.variants.length) {
+      setStatus('Ready. Click Convert and download.', 'success');
+    } else {
+      setStatus('Add a Shopify CSV file to begin.');
+    }
+  });
+
+  convertBtn.addEventListener('click', () => {
+    const key = marketplace.value;
+    try {
+      const csv = transformShopifyData(state.variants, key);
+      const date = new Date().toISOString().slice(0, 10);
+      downloadCSV(csv, `shopify-to-${key}-${date}.csv`);
+      setStatus(`Downloaded ${state.variants.length.toLocaleString('en-US')} rows for ${FORMATS[key].label}.`, 'success');
+    } catch (err) {
+      setStatus(err.message, 'error');
+    }
+  });
+
+  renderPreview([]);
+})();
   </script>
 </body>
 </html>
