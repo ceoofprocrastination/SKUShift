@@ -495,13 +495,71 @@
         toQty(v.qty),
       ],
     },
+    amazon: {
+      label: 'Amazon',
+      headers: ['sku', 'item_name', 'product_description', 'standard_price', 'quantity', 'update_delete'],
+      map: (v) => [
+        safeText(v.sku),
+        safeText(truncate(v.product.title, 200)),
+        safeText(truncate(stripHtml(v.product.body), 2000)),
+        toPrice(v.price),
+        toQty(v.qty),
+        'Update',
+      ],
+    },
+    etsy: {
+      label: 'Etsy',
+      headers: ['TITLE', 'DESCRIPTION', 'PRICE', 'CURRENCY_CODE', 'QUANTITY', 'SKU'],
+      map: (v) => [
+        safeText(truncate(v.product.title, 140)),
+        safeText(stripHtml(v.product.body)),
+        toPrice(v.price),
+        'USD',
+        Math.min(999, toQty(v.qty)), // Etsy caps quantity at 999 per listing
+        safeText(v.sku),
+      ],
+    },
+    walmart: {
+      label: 'Walmart',
+      headers: ['SKU', 'Product Name', 'Short Description', 'Price', 'Inventory'],
+      map: (v) => [
+        safeText(v.sku),
+        safeText(truncate(v.product.title, 200)),
+        safeText(truncate(stripHtml(v.product.body), 1000)),
+        toPrice(v.price),
+        toQty(v.qty),
+      ],
+    },
+    shopify: {
+      label: 'Shopify',
+      headers: ['Handle', 'Title', 'Body (HTML)', 'Variant SKU', 'Variant Price', 'Variant Inventory Tracker', 'Variant Inventory Qty'],
+      // Shopify expects Title and Body only on a product's first row.
+      map: (v, seen) => {
+        const handle =
+          v.handle ||
+          v.product.title.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '') ||
+          'product-' + (seen.size + 1);
+        const first = !seen.has(handle);
+        seen.add(handle);
+        return [
+          handle,
+          first ? safeText(v.product.title) : '',
+          first ? v.product.body : '', // keep original HTML for Shopify
+          safeText(v.sku),
+          toPrice(v.price),
+          'shopify',
+          toQty(v.qty),
+        ];
+      },
+    },
   };
 
   /** Converts the extracted Shopify variant array into a CSV string for the chosen format. */
   function transformShopifyData(variants, formatKey) {
     const fmt = FORMATS[formatKey];
-    if (!fmt) throw new Error('That marketplace is not supported yet.');
-    return toCSV(fmt.headers, variants.map(fmt.map));
+    if (!fmt) throw new Error('Choose a target marketplace first.');
+    const seen = new Set(); // lets a format track per-product state across rows
+    return toCSV(fmt.headers, variants.map((v) => fmt.map(v, seen)));
   }
 
   /* ---------- Download ---------- */
@@ -566,7 +624,7 @@
       setStatus(
         FORMATS[marketplace.value]
           ? 'Ready. Click Convert and download.'
-          : 'File loaded. Now choose TikTok Shop or eBay as the target.',
+          : 'File loaded. Now choose a target marketplace.',
         'success'
       );
     } catch (err) {
@@ -607,7 +665,7 @@
   marketplace.addEventListener('change', () => {
     updateConvertButton();
     if (!FORMATS[marketplace.value]) {
-      setStatus('That marketplace is not supported yet. Choose TikTok Shop or eBay.', 'error');
+      setStatus('Choose a target marketplace.', 'error');
     } else if (state.variants.length) {
       setStatus('Ready. Click Convert and download.', 'success');
     } else {
