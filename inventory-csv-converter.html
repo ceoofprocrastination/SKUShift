@@ -1,0 +1,275 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Free E-Commerce Inventory CSV Converter for Amazon, eBay, Etsy &amp; Shopify</title>
+  <meta name="description" content="Convert inventory CSV files between Amazon, eBay, Etsy, Walmart and Shopify formats in seconds. Free, private, in-browser tool with instant SKU count, inventory value and price stats.">
+  <meta name="keywords" content="inventory CSV converter, Amazon to Shopify CSV, eBay to Etsy CSV, marketplace listing converter, product feed converter, bulk listing tool">
+  <meta name="robots" content="index, follow, max-image-preview:large">
+  <meta name="author" content="Inventory CSV Converter">
+  <link rel="canonical" href="https://www.example.com/inventory-csv-converter">
+  <meta name="theme-color" content="#0f766e">
+
+  <meta property="og:type" content="website">
+  <meta property="og:title" content="Free Cross-Marketplace Inventory CSV Converter">
+  <meta property="og:description" content="Move your product catalog between Amazon, eBay, Etsy, Walmart and Shopify without retyping a single listing.">
+  <meta property="og:url" content="https://www.example.com/inventory-csv-converter">
+  <meta property="og:image" content="https://www.example.com/og-image.png">
+  <meta name="twitter:card" content="summary_large_image">
+  <meta name="twitter:title" content="Free Cross-Marketplace Inventory CSV Converter">
+  <meta name="twitter:description" content="Convert inventory CSVs between major marketplaces in your browser.">
+
+  <script type="application/ld+json">
+  {
+    "@context": "https://schema.org",
+    "@type": "WebApplication",
+    "name": "Cross-Marketplace Inventory CSV Converter",
+    "applicationCategory": "BusinessApplication",
+    "operatingSystem": "Any (browser-based)",
+    "offers": { "@type": "Offer", "price": "0", "priceCurrency": "USD" },
+    "description": "Free browser-based tool that converts e-commerce inventory CSV files between Amazon, eBay, Etsy, Walmart and Shopify formats."
+  }
+  </script>
+
+  <!-- Google AdSense (add your publisher ID when approved)
+  <script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-XXXXXXXXXXXXXXXX" crossorigin="anonymous"></script>
+  -->
+
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,500;12..96,700;12..96,800&family=IBM+Plex+Sans:wght@400;500;600&display=swap" rel="stylesheet">
+
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          fontFamily: {
+            display: ['"Bricolage Grotesque"', 'ui-sans-serif', 'system-ui', 'sans-serif'],
+            sans: ['"IBM Plex Sans"', 'ui-sans-serif', 'system-ui', 'sans-serif']
+          },
+          colors: {
+            ink: '#10213a',
+            mist: '#f3f6f9',
+            teal: { 50: '#ecfdf8', 100: '#ccf5ea', 600: '#0f766e', 700: '#0b5f59', 900: '#083f3b' },
+            amber: { 400: '#fbbf24' }
+          }
+        }
+      }
+    }
+  </script>
+  <style>
+    html { scroll-behavior: smooth; }
+    .dz-active { border-color: #0f766e; background-color: #ecfdf8; }
+    details > summary { list-style: none; }
+    details > summary::-webkit-details-marker { display: none; }
+    details[open] .chev { transform: rotate(180deg); }
+    .chev { transition: transform .2s ease; }
+    @media (prefers-reduced-motion: reduce) { html { scroll-behavior: auto; } .chev { transition: none; } }
+  </style>
+</head>
+
+<body class="bg-mist font-sans text-ink antialiased">
+
+  <header class="border-b border-slate-200 bg-white">
+    <div class="mx-auto flex max-w-6xl items-center justify-between px-4 py-4 sm:px-6">
+      <a href="#" class="font-display text-lg font-extrabold tracking-tight">SKU<span class="text-teal-600">Shift</span></a>
+      <nav class="flex gap-5 text-sm font-medium text-slate-600">
+        <a href="#converter" class="hover:text-teal-700">Converter</a>
+        <a href="#guide" class="hover:text-teal-700">Guide</a>
+        <a href="#faq" class="hover:text-teal-700">FAQ</a>
+      </nav>
+    </div>
+  </header>
+
+  <main>
+    <!-- Hero -->
+    <section class="bg-ink text-white">
+      <div class="mx-auto max-w-6xl px-4 py-14 sm:px-6 sm:py-20">
+        <h1 class="font-display max-w-3xl text-4xl font-extrabold leading-tight tracking-tight sm:text-6xl">
+          One inventory file. Every marketplace.
+        </h1>
+        <p class="mt-5 max-w-2xl text-lg text-slate-300">
+          Upload a product CSV from one sales channel and get a ready-to-import file for another. Everything runs in your browser, so your catalog never leaves your computer.
+        </p>
+        <div class="mt-8 flex flex-wrap gap-3 text-sm">
+          <a href="#converter" class="rounded-lg bg-amber-400 px-5 py-3 font-semibold text-ink hover:bg-yellow-300 focus:outline-none focus-visible:ring-2 focus-visible:ring-white">Convert a file</a>
+          <a href="#guide" class="rounded-lg border border-slate-500 px-5 py-3 font-semibold text-white hover:bg-white/10 focus:outline-none focus-visible:ring-2 focus-visible:ring-white">How it works</a>
+        </div>
+      </div>
+    </section>
+
+    <!-- Converter -->
+    <section id="converter" class="mx-auto -mt-8 max-w-6xl px-4 sm:px-6">
+      <div class="rounded-2xl bg-white p-5 shadow-xl ring-1 ring-slate-200 sm:p-8">
+
+        <div class="grid gap-6 lg:grid-cols-5">
+          <!-- Upload -->
+          <div class="lg:col-span-3">
+            <label for="fileInput" class="mb-2 block text-sm font-semibold">Inventory CSV file</label>
+            <div id="dropZone" class="flex min-h-[220px] cursor-pointer flex-col items-center justify-center rounded-xl border-2 border-dashed border-slate-300 bg-slate-50 px-6 py-10 text-center transition hover:border-teal-600 hover:bg-teal-50">
+              <svg class="h-12 w-12 text-teal-600" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="M12 16V4m0 0L8 8m4-4 4 4M4 16v2a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-2"/></svg>
+              <p class="mt-3 text-base font-semibold">Drop your CSV here</p>
+              <p class="mt-1 text-sm text-slate-500">or <span class="font-semibold text-teal-700 underline">browse your files</span></p>
+              <p class="mt-3 text-xs text-slate-500">.csv up to 25 MB. Processed locally, never uploaded.</p>
+              <p id="fileName" class="mt-3 hidden rounded-full bg-teal-100 px-3 py-1 text-xs font-medium text-teal-900"></p>
+              <input id="fileInput" type="file" accept=".csv,text/csv" class="sr-only">
+            </div>
+          </div>
+
+          <!-- Options -->
+          <div class="flex flex-col gap-5 lg:col-span-2">
+            <div>
+              <label for="marketplace" class="mb-2 block text-sm font-semibold">Convert to</label>
+              <select id="marketplace" class="w-full rounded-lg border border-slate-300 bg-white px-3 py-3 text-sm focus:border-teal-600 focus:outline-none focus:ring-2 focus:ring-teal-600/30">
+                <option value="" disabled selected>Choose target marketplace</option>
+                <option value="amazon">Amazon Seller Central</option>
+                <option value="ebay">eBay File Exchange</option>
+                <option value="etsy">Etsy Shop Manager</option>
+                <option value="shopify">Shopify Products</option>
+                <option value="walmart">Walmart Marketplace</option>
+              </select>
+            </div>
+            <button id="convertBtn" type="button" disabled class="rounded-lg bg-teal-600 px-5 py-3 text-sm font-semibold text-white transition hover:bg-teal-700 focus:outline-none focus-visible:ring-2 focus-visible:ring-teal-600 focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:bg-slate-300">Convert and download</button>
+            <p id="statusMsg" class="text-sm text-slate-500" role="status" aria-live="polite">Add a file and pick a marketplace to begin.</p>
+          </div>
+        </div>
+
+        <!-- Stat cards -->
+        <div class="mt-8 grid gap-4 sm:grid-cols-3">
+          <div class="rounded-xl border border-slate-200 p-5">
+            <p class="text-sm text-slate-500">Total SKUs</p>
+            <p id="statSkus" class="font-display mt-1 text-3xl font-bold">0</p>
+          </div>
+          <div class="rounded-xl border border-slate-200 p-5">
+            <p class="text-sm text-slate-500">Total inventory value</p>
+            <p id="statValue" class="font-display mt-1 text-3xl font-bold">$0.00</p>
+          </div>
+          <div class="rounded-xl border border-slate-200 p-5">
+            <p class="text-sm text-slate-500">Average product price</p>
+            <p id="statAvg" class="font-display mt-1 text-3xl font-bold">$0.00</p>
+          </div>
+        </div>
+
+        <!-- Preview table -->
+        <div class="mt-8">
+          <h2 class="font-display text-lg font-bold">Preview (first 3 rows)</h2>
+          <div class="mt-3 overflow-x-auto rounded-xl border border-slate-200">
+            <table class="min-w-full text-left text-sm">
+              <thead class="bg-slate-50 text-slate-600">
+                <tr>
+                  <th class="px-4 py-3 font-semibold">SKU</th>
+                  <th class="px-4 py-3 font-semibold">Title</th>
+                  <th class="px-4 py-3 font-semibold">Price</th>
+                  <th class="px-4 py-3 font-semibold">Quantity</th>
+                </tr>
+              </thead>
+              <tbody id="previewBody" class="divide-y divide-slate-100 text-slate-400">
+                <tr><td class="px-4 py-3">&mdash;</td><td class="px-4 py-3">Your first product will appear here</td><td class="px-4 py-3">&mdash;</td><td class="px-4 py-3">&mdash;</td></tr>
+                <tr><td class="px-4 py-3">&mdash;</td><td class="px-4 py-3">&mdash;</td><td class="px-4 py-3">&mdash;</td><td class="px-4 py-3">&mdash;</td></tr>
+                <tr><td class="px-4 py-3">&mdash;</td><td class="px-4 py-3">&mdash;</td><td class="px-4 py-3">&mdash;</td><td class="px-4 py-3">&mdash;</td></tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- AdSense banner placeholder -->
+    <aside class="mx-auto my-10 max-w-6xl px-4 sm:px-6" aria-label="Advertisement">
+      <div id="adsense-banner" class="mx-auto flex min-h-[90px] w-full max-w-[970px] items-center justify-center rounded-lg border border-dashed border-slate-300 bg-white/60 text-xs text-slate-400">
+        <!-- Paste AdSense <ins class="adsbygoogle"> unit here -->
+      </div>
+    </aside>
+
+    <!-- SEO text layer -->
+    <section id="guide" class="mx-auto max-w-3xl px-4 pb-16 sm:px-6">
+      <article class="space-y-5 leading-relaxed text-slate-700">
+        <h2 class="font-display text-3xl font-extrabold tracking-tight text-ink">The simplest way to move inventory between marketplaces</h2>
+        <p>Selling on more than one channel is one of the fastest ways to grow an online store, but every marketplace wants your product data in a different shape. Amazon expects flat files with its own column names, eBay uses File Exchange templates, Etsy has a Shop Manager import, and Shopify relies on a product CSV with handles and variant rows. An inventory CSV converter removes the manual copy and paste that usually stands between you and a new sales channel.</p>
+
+        <h3 class="font-display pt-2 text-xl font-bold text-ink">What an inventory CSV converter does</h3>
+        <p>A converter reads the columns in your source file, such as SKU, title, description, price, quantity, brand and image URLs, and maps each one to the field the destination marketplace requires. Instead of retyping hundreds of listings, you upload one file and receive another that is ready to import. Along the way, the tool can calculate the total number of SKUs, the combined value of your stock and your average price, which gives you a quick sanity check before you publish anything.</p>
+
+        <h3 class="font-display pt-2 text-xl font-bold text-ink">How to convert your product CSV</h3>
+        <ol class="list-decimal space-y-2 pl-5">
+          <li>Export your catalog from the current marketplace as a CSV file.</li>
+          <li>Drag the file into the upload area, or click to browse your computer.</li>
+          <li>Review the SKU count, inventory value and the three-row preview.</li>
+          <li>Select the marketplace you want to sell on next.</li>
+          <li>Download the converted file and import it in the destination dashboard.</li>
+        </ol>
+
+        <h3 class="font-display pt-2 text-xl font-bold text-ink">Why validate before you import</h3>
+        <p>Most import failures come from small data problems: duplicate SKUs, blank prices, quantities written as text, or stray commas inside titles. Checking your totals first helps catch these issues early. If the SKU count is lower than you expect, rows may have been merged or skipped. If the average price looks unusually high or low, a currency symbol or decimal separator may be the cause. Spending two minutes on review can save hours of cleanup after a failed bulk upload.</p>
+
+        <h3 class="font-display pt-2 text-xl font-bold text-ink">Marketplace-specific tips</h3>
+        <p><strong class="text-ink">Amazon:</strong> every listing needs a unique SKU, a product type and, in most categories, a UPC, EAN or brand registry exemption. Keep titles under the category limit and avoid promotional phrases.</p>
+        <p><strong class="text-ink">eBay:</strong> File Exchange requires an action column and a category ID. Fixed price listings need a format, duration and condition, so check those fields after conversion.</p>
+        <p><strong class="text-ink">Etsy:</strong> listings are limited to thirteen tags and require a who-made, what-is-it and when-made declaration. Handmade, vintage and supply rules apply, so confirm that your products qualify.</p>
+        <p><strong class="text-ink">Shopify:</strong> products are grouped by handle, and variants sit on additional rows. Make sure options such as size and color are consistent from row to row.</p>
+        <p><strong class="text-ink">Walmart:</strong> approval is required before selling, and item feeds must follow the current Walmart spec for your category, including shipping and fulfillment details.</p>
+
+        <h3 class="font-display pt-2 text-xl font-bold text-ink">Keep your data private and your stock accurate</h3>
+        <p>Your inventory is a business asset, so it should not be sent to an unknown server. This converter is designed to process files locally in your browser, which means your costs, prices and supplier details stay on your device. Remember that a converted file is a snapshot. Once you list on several channels, quantities can drift quickly, so consider a multichannel sync tool or a regular reconciliation routine to prevent overselling and cancelled orders.</p>
+
+        <h3 class="font-display pt-2 text-xl font-bold text-ink">Best practices for multichannel growth</h3>
+        <p>Start with your best sellers rather than your whole catalog. Test one marketplace, confirm that fees and shipping rules make sense, and then expand. Keep a master spreadsheet with a stable SKU for every product, because consistent SKUs make conversions, reporting and returns far easier. Finally, tailor titles and descriptions for each channel after the conversion, since buyers on different platforms search in different ways.</p>
+      </article>
+
+      <!-- FAQ -->
+      <div id="faq" class="mt-12">
+        <h2 class="font-display text-3xl font-extrabold tracking-tight text-ink">Frequently asked questions</h2>
+        <div class="mt-5 divide-y divide-slate-200 rounded-xl border border-slate-200 bg-white">
+          <details class="group p-5">
+            <summary class="flex cursor-pointer items-center justify-between gap-4 font-semibold focus:outline-none focus-visible:ring-2 focus-visible:ring-teal-600">
+              Is the inventory CSV converter free to use?
+              <svg class="chev h-5 w-5 shrink-0 text-teal-600" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" aria-hidden="true"><path d="m6 9 6 6 6-6"/></svg>
+            </summary>
+            <p class="mt-3 text-slate-600">Yes. The tool is free and does not require an account. Advertising helps cover the cost of keeping it online.</p>
+          </details>
+          <details class="group p-5">
+            <summary class="flex cursor-pointer items-center justify-between gap-4 font-semibold focus:outline-none focus-visible:ring-2 focus-visible:ring-teal-600">
+              Is my product data uploaded to a server?
+              <svg class="chev h-5 w-5 shrink-0 text-teal-600" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" aria-hidden="true"><path d="m6 9 6 6 6-6"/></svg>
+            </summary>
+            <p class="mt-3 text-slate-600">No. Files are read and converted inside your browser, so your catalog stays on your device.</p>
+          </details>
+          <details class="group p-5">
+            <summary class="flex cursor-pointer items-center justify-between gap-4 font-semibold focus:outline-none focus-visible:ring-2 focus-visible:ring-teal-600">
+              Which file formats can I upload?
+              <svg class="chev h-5 w-5 shrink-0 text-teal-600" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" aria-hidden="true"><path d="m6 9 6 6 6-6"/></svg>
+            </summary>
+            <p class="mt-3 text-slate-600">Standard comma-separated .csv files. If your data is in Excel, use Save As and choose CSV UTF-8 first.</p>
+          </details>
+          <details class="group p-5">
+            <summary class="flex cursor-pointer items-center justify-between gap-4 font-semibold focus:outline-none focus-visible:ring-2 focus-visible:ring-teal-600">
+              How is total inventory value calculated?
+              <svg class="chev h-5 w-5 shrink-0 text-teal-600" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" aria-hidden="true"><path d="m6 9 6 6 6-6"/></svg>
+            </summary>
+            <p class="mt-3 text-slate-600">Each row's price is multiplied by its quantity, and the results are added together. The average price is the mean unit price across all SKUs.</p>
+          </details>
+          <details class="group p-5">
+            <summary class="flex cursor-pointer items-center justify-between gap-4 font-semibold focus:outline-none focus-visible:ring-2 focus-visible:ring-teal-600">
+              Will the converted file import without errors?
+              <svg class="chev h-5 w-5 shrink-0 text-teal-600" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" aria-hidden="true"><path d="m6 9 6 6 6-6"/></svg>
+            </summary>
+            <p class="mt-3 text-slate-600">Core fields are mapped for you, but each marketplace has category-specific rules. Review required fields such as category, condition and identifiers before importing.</p>
+          </details>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <footer class="border-t border-slate-200 bg-white">
+    <div class="mx-auto max-w-6xl px-4 py-8 text-sm text-slate-500 sm:px-6">
+      <p>&copy; 2026 SKUShift. Amazon, eBay, Etsy, Shopify and Walmart are trademarks of their respective owners and are not affiliated with this tool.</p>
+    </div>
+  </footer>
+
+  <script>
+    // Data parser goes here.
+  </script>
+</body>
+</html>
